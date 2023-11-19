@@ -5,6 +5,7 @@ import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 import threading
+import logging
 import aiofiles
 from colorama import Fore, init
 
@@ -17,6 +18,10 @@ init(autoreset=True)
 
 drivers = {}
 
+selenium_logger = logging.getLogger('selenium.webdriver.remote.remote_connection')
+selenium_logger.setLevel(logging.ERROR)  # Chỉ hiển thị log error của Selenium
+
+
 def create_driver():
     options = webdriver.ChromeOptions()
     options.add_experimental_option("detach", True)
@@ -26,6 +31,8 @@ def create_driver():
     options.add_argument('window-size=1920x1080')
     options.add_argument("disable-gpu")
     options.add_argument("--no-sandbox")
+    options.set_capability('goog:loggingPrefs', {'browser': 'OFF', 'driver': 'OFF'}) 
+    options.add_argument('--log-level=3')
     return webdriver.Chrome(options=options)
 
 def split_text(input, character):
@@ -56,19 +63,23 @@ def ensure_outfile() -> None:
     if not os.path.exists("./results"):
         os.mkdir("./results")
         open("./results/banned.txt", 'w')
+        open("./results/living.txt", 'w')
 
 
 def output_available(result: tuple[str, int]) -> None:
     username, status = result
     u_name, u_auth, u_hasphone = split_text(username, "|")
-    if u_hasphone == "True":
+    if u_hasphone == "False":
         if (status == 1 or status==2):
-            print(f"[  {Fore.LIGHTRED_EX}DIE OR NOT INFO  {Fore.RESET}] -> {u_name} - {u_auth}")
+            print(f"{Fore.LIGHTRED_EX}[ DIE OR NOT INFO ]{Fore.RESET}{Fore.LIGHTRED_EX} -> {u_name} - {u_auth}{Fore.RESET}")
             with open("./results/banned.txt", 'a') as of:
                 of.write(str(username + '\n'))
                 of.close()
         else:
-            print(f"[ {Fore.LIGHTGREEN_EX}LIVE {Fore.RESET}] -> {u_name} - {u_auth}")
+            print(f"{Fore.LIGHTGREEN_EX}[ LIVE ]{Fore.RESET}{Fore.LIGHTGREEN_EX} -> {u_name} - {u_auth}{Fore.RESET}")
+            with open("./results/living.txt", 'a') as of:
+                of.write(str(username + '\n'))
+                of.close()
 
 
 def check_user(usernames: list[str]) -> None:
